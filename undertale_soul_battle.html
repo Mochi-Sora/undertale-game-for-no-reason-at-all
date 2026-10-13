@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UNDERTALE: Soul Battle Odyssey (Hardcore Balanced)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Press Start 2P', monospace;
+            background-color: #000;
+            color: #fff;
+            overflow: hidden;
+            user-select: none;
+        }
+        .pixelated {
+            image-rendering: pixelated;
+        }
+        /* Custom retro scanline effect */
+        .scanlines {
+            background: linear-gradient(
+                rgba(18, 16, 16, 0) 50%, 
+                rgba(0, 0, 0, 0.25) 50%
+            ), linear-gradient(
+                90deg,
+                rgba(255, 0, 0, 0.03),
+                rgba(0, 255, 0, 0.01),
+                rgba(0, 0, 255, 0.03)
+            );
+            background-size: 100% 4px, 6px 100%;
+        }
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-8px); }
+        }
+        .animate-float {
+            animation: float 2.5s ease-in-out infinite;
+        }
+        @keyframes pulse-heart {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.15); }
+        }
+        .animate-heart {
+            animation: pulse-heart 0.8s ease-in-out infinite;
+        }
+        @keyframes flash-invincible {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+        .invincible {
+            animation: flash-invincible 0.2s ease-in-out infinite;
+        }
+    </style>
+</head>
+<body class="w-screen h-screen flex flex-col items-center justify-center relative select-none">
+
+    <!-- CRT Screen Overlay & Scanlines -->
+    <div class="absolute inset-0 scanlines pointer-events-none z-50"></div>
+
+    <!-- MAIN MENU SCREEN -->
+    <div id="screen-menu" class="relative z-20 flex flex-col items-center justify-center h-full w-full max-w-3xl mx-auto px-4 text-center">
+        <div class="mb-6 animate-float">
+            <span class="text-xs text-yellow-300 block mb-2 tracking-widest">[ HARDCORE BALANCED EDITION ]</span>
+            <h1 class="text-3xl md:text-5xl font-bold tracking-wider text-yellow-400 drop-shadow-[4px_4px_0px_#ff0000]">
+                UNDERTALE
+            </h1>
+            <h2 class="text-sm md:text-lg text-cyan-300 mt-3 tracking-widest">SOUL BATTLE ODYSSEY</h2>
+        </div>
+
+        <div class="my-8 w-48 h-48 flex items-center justify-center relative">
+            <!-- SVG Pixel Heart -->
+            <svg class="w-24 h-24 text-red-500 animate-heart drop-shadow-[0_0_15px_rgba(239,68,68,0.8)]" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+            </svg>
+        </div>
+
+        <div class="space-y-4 w-full max-w-xs">
+            <button onclick="startGame()" class="w-full py-4 bg-black border-4 border-white hover:bg-yellow-400 hover:text-black hover:border-yellow-400 text-white text-sm font-bold transition-all shadow-[4px_4px_0px_#fff] active:translate-x-1 active:translate-y-1">
+                &gt; START GAME
+            </button>
+            <button onclick="toggleInstructions()" class="w-full py-4 bg-black border-4 border-white hover:bg-cyan-400 hover:text-black hover:border-cyan-400 text-white text-sm font-bold transition-all shadow-[4px_4px_0px_#fff] active:translate-x-1 active:translate-y-1">
+                HOW TO PLAY
+            </button>
+        </div>
+
+        <div class="mt-8 text-[10px] text-gray-500">
+            Use ARROW KEYS or WASD to move Soul &bull; Enter/Click to select
+        </div>
+    </div>
+
+    <!-- INSTRUCTIONS MODAL -->
+    <div id="instructions-modal" class="fixed inset-0 bg-black/90 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-black border-4 border-yellow-400 p-6 max-w-lg w-full text-left space-y-4 shadow-[8px_8px_0px_#eab308]">
+            <h3 class="text-yellow-400 text-lg border-b-2 border-yellow-400 pb-2">HOW TO PLAY</h3>
+            <ul class="text-xs space-y-3 leading-relaxed text-gray-300">
+                <li><span class="text-red-500 font-bold">♥ SOUL:</span> Dodge intense bullet hell projectiles. You have 1000 HP and brief invincibility frames (iframes) after getting hit!</li>
+                <li><span class="text-yellow-300 font-bold">FIGHT:</span> Strike accurately to reduce Omega Sans's 2000 HP to 0.</li>
+                <li><span class="text-cyan-300 font-bold">ACT:</span> Taunt or plea, triggering even harder onslaughts.</li>
+                <li><span class="text-green-400 font-bold">ITEM:</span> Heal your HP using Cinnamon Bunnies.</li>
+                <li><span class="text-purple-400 font-bold">MERCY:</span> Survive and triumph over the ultimate challenge!</li>
+            </ul>
+            <div class="pt-4 text-center">
+                <button onclick="toggleInstructions()" class="px-6 py-2 bg-yellow-400 text-black font-bold border-2 border-white text-xs">
+                    GOT IT!
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- BATTLE GAME SCREEN -->
+    <div id="screen-battle" class="relative z-20 w-full max-w-2xl h-[550px] mx-auto hidden flex flex-col justify-between p-4 bg-black border-4 border-white shadow-[0_0_30px_rgba(255,255,255,0.2)]">
+        
+        <!-- Top Area: Monster Visual & Status -->
+        <div class="flex-1 flex flex-col items-center justify-center relative">
+            <!-- Monster HP Bar -->
+            <div id="monster-hp-container" class="absolute top-2 w-48 flex flex-col items-center">
+                <div class="flex justify-between w-full text-[10px] text-yellow-300 mb-1">
+                    <span id="monster-name">OMEGA SANS (GOD MODE)</span>
+                    <span id="monster-hp-text">2000/2000</span>
+                </div>
+                <div class="w-full bg-red-900 h-3 border-2 border-white">
+                    <div id="monster-hp-fill" class="bg-green-500 h-full w-full transition-all duration-300"></div>
+                </div>
+            </div>
+
+            <!-- Monster Sprite Container -->
+            <div id="monster-sprite-container" class="relative mt-8 animate-float">
+                <svg id="monster-svg" class="w-36 h-36 drop-shadow-[0_0_10px_rgba(255,255,255,0.3)]" viewBox="0 0 100 100">
+                    <circle cx="50" cy="45" r="24" fill="#ffffff" stroke="#000" stroke-width="3"/>
+                    <circle cx="38" cy="42" r="5" fill="#000"/>
+                    <circle cx="62" cy="42" r="5" fill="#3b82f6"/>
+                    <path d="M 40 58 Q 50 68 60 58" stroke="#000" stroke-width="3" fill="none"/>
+                </svg>
+            </div>
+
+            <!-- Floating Dialogue Bubble -->
+            <div id="monster-speech" class="absolute top-12 left-1/2 -translate-x-1/2 bg-white text-black px-4 py-2 rounded-xl text-xs font-bold border-2 border-black hidden shadow-lg">
+                You're gonna have a bad time!
+            </div>
+        </div>
+
+        <!-- Middle Area: Action / Bullet Dodge Box -->
+        <div class="w-full h-44 relative flex items-center justify-center">
+            <div id="battle-box" class="w-full h-full border-4 border-white bg-black relative overflow-hidden transition-all duration-300">
+                <!-- Canvas for Bullet Hell Dodging -->
+                <canvas id="dodgeCanvas" class="absolute inset-0 w-full h-full hidden"></canvas>
+                
+                <!-- Typewriter Text Dialog Box -->
+                <div id="dialogue-box" class="absolute inset-0 p-4 text-xs md:text-sm leading-relaxed text-white flex items-start">
+                    <span id="typewriter-text">* Omega Sans steps forward with overwhelming malice!</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bottom Area: Player Stats & Action Buttons -->
+        <div class="mt-4 space-y-3">
+            <!-- Player Status Bar -->
+            <div class="flex items-center justify-between text-xs px-2">
+                <div class="flex items-center gap-2">
+                    <span class="text-yellow-400 font-bold">CHARA</span>
+                    <span class="text-red-500 font-bold">LV 20</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span class="text-yellow-400 text-[10px]">HP</span>
+                    <div class="w-40 bg-red-900 h-3 border-2 border-white relative">
+                        <div id="player-hp-fill" class="bg-yellow-400 h-full w-full transition-all duration-200"></div>
+                    </div>
+                    <span id="player-hp-text" class="text-xs font-mono">1000/1000</span>
+                </div>
+            </div>
+
+            <!-- Action Buttons Grid -->
+            <div id="action-buttons" class="grid grid-cols-4 gap-2">
+                <button onclick="selectAction('fight')" class="py-3 bg-black border-4 border-red-600 hover:bg-red-600 text-yellow-400 hover:text-black text-xs font-bold transition-all shadow-[3px_3px_0px_#dc2626]">
+                    [FIGHT]
+                </button>
+                <button onclick="selectAction('act')" class="py-3 bg-black border-4 border-yellow-500 hover:bg-yellow-500 text-yellow-400 hover:text-black text-xs font-bold transition-all shadow-[3px_3px_0px_#eab308]">
+                    [ACT]
+                </button>
+                <button onclick="selectAction('item')" class="py-3 bg-black border-4 border-green-500 hover:bg-green-500 text-yellow-400 hover:text-black text-xs font-bold transition-all shadow-[3px_3px_0px_#22c55e]">
+                    [ITEM]
+                </button>
+                <button onclick="selectAction('mercy')" class="py-3 bg-black border-4 border-purple-500 hover:bg-purple-500 text-yellow-400 hover:text-black text-xs font-bold transition-all shadow-[3px_3px_0px_#a855f7]">
+                    [MERCY]
+                </button>
+            </div>
+
+            <!-- Sub-menu container -->
+            <div id="submenu-container" class="hidden grid grid-cols-2 gap-2">
+            </div>
+        </div>
+    </div>
+
+    <!-- GAME OVER SCREEN -->
+    <div id="screen-gameover" class="relative z-30 w-full max-w-md mx-auto hidden flex flex-col items-center justify-center h-full text-center p-6">
+        <div class="text-red-600 text-4xl md:text-6xl font-black mb-6 tracking-widest animate-pulse">
+            YOU DIED
+        </div>
+        <p id="gameover-quote" class="text-xs text-gray-300 mb-8 italic">
+            "Don't give up now! Your determination can shatter any obstacle."
+        </p>
+        <div class="space-y-4 w-full">
+            <button onclick="restartGame()" class="w-full py-4 bg-black border-4 border-white hover:bg-red-600 text-white text-xs font-bold">
+                CONTINUE
+            </button>
+            <button onclick="returnToMenu()" class="w-full py-4 bg-black border-4 border-white hover:bg-gray-700 text-white text-xs font-bold">
+                QUIT
+            </button>
+        </div>
+    </div>
+
+    <!-- VICTORY SCREEN -->
+    <div id="screen-victory" class="relative z-30 w-full max-w-md mx-auto hidden flex flex-col items-center justify-center h-full text-center p-6">
+        <div class="text-yellow-400 text-3xl md:text-5xl font-black mb-4 tracking-widest">
+            YOU WON!
+        </div>
+        <p class="text-xs text-cyan-300 mb-6" id="victory-stats">
+            You triumphed over the ultimate bullet hell challenge!
+        </p>
+        <button onclick="returnToMenu()" class="w-full py-4 bg-black border-4 border-yellow-400 hover:bg-yellow-400 hover:text-black text-white text-xs font-bold">
+            MAIN MENU &gt;
+        </button>
+    </div>
+
+    <script>
+        // Web Audio API Sound Effects Generator
+        let audioCtx = null;
+        
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
+
+        function playSound(type) {
+            if (!audioCtx) return;
+            try {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                const now = audioCtx.currentTime;
+
+                if (type === 'select') {
+                    osc.type = 'square';
+                    osc.frequency.setValueAtTime(440, now);
+                    osc.frequency.setValueAtTime(880, now + 0.05);
+                    gain.gain.setValueAtTime(0.1, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
+                    osc.start(now);
+                    osc.stop(now + 0.1);
+                } else if (type === 'hit') {
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(150, now);
+                    osc.frequency.exponentialRampToValueAtTime(30, now + 0.2);
+                    gain.gain.setValueAtTime(0.2, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+                    osc.start(now);
+                    osc.stop(now + 0.2);
+                } else if (type === 'heal') {
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(330, now);
+                    osc.frequency.setValueAtTime(550, now + 0.1);
+                    osc.frequency.setValueAtTime(770, now + 0.2);
+                    gain.gain.setValueAtTime(0.15, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+                    osc.start(now);
+                    osc.stop(now + 0.35);
+                } else if (type === 'text') {
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(300 + Math.random() * 100, now);
+                    gain.gain.setValueAtTime(0.05, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.04);
+                    osc.start(now);
+                    osc.stop(now + 0.04);
+                } else if (type === 'laser') {
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(800, now);
+                    osc.frequency.exponentialRampToValueAtTime(100, now + 0.4);
+                    gain.gain.setValueAtTime(0.15, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
+                    osc.start(now);
+                    osc.stop(now + 0.4);
+                }
+            } catch (e) {}
+        }
+
+        const MONSTERS = [
+            {
+                name: "OMEGA SANS (GOD MODE)",
+                hp: 2000,
+                maxHp: 2000,
+                attack: 40,
+                dialogue: ["* Can you dodge ALL of this?", "* Special Hell coming right up!", "* Don't lose your determination!"],
+                acts: [
+                    { name: "Plea", desc: "You begged for mercy. Sans laughs.", effect: "angry" },
+                    { name: "Taunt", desc: "You taunted Sans. His eyes blaze neon blue!", effect: "angry" }
+                ],
+                isSpared: false
+            }
+        ];
+
+        let currentMonsterIdx = 0;
+        let monster = null;
+        let playerHp = 1000;
+        let playerMaxHp = 1000;
+        let inventory = ["Cinnamon Bunny", "Cinnamon Bunny", "Cinnamon Bunny"];
+        let turnState = 'DIALOGUE';
+        let typewriterInterval = null;
+        let invincibleTimer = 0;
+
+        const canvas = document.getElementById('dodgeCanvas');
+        let ctx = null;
+        if (canvas) {
+            ctx = canvas.getContext('2d');
+        }
+        let soul = { x: 150, y: 80, size: 10, speed: 5.5 };
+        let bullets = [];
+        let specialHazards = [];
+        let dodgeTimer = 0;
+        let currentAttackPattern = 0;
+        let keys = { ArrowUp: false, ArrowDown: false, ArrowLeft: false, ArrowRight: false, KeyW: false, KeyS: false, KeyA: false, KeyD: false };
+
+        function toggleInstructions() {
+            initAudio();
+            playSound('select');
+            const modal = document.getElementById('instructions-modal');
+            modal.classList.toggle('hidden');
+        }
+
+        function startGame() {
+            initAudio();
+            playSound('select');
+            document.getElementById('screen-menu').classList.add('hidden');
+            document.getElementById('screen-battle').classList.remove('hidden');
+            
+            currentMonsterIdx = 0;
+            playerHp = 1000;
+            playerMaxHp = 1000;
+            loadMonster();
+        }
+
+        function loadMonster() {
+            monster = JSON.parse(JSON.stringify(MONSTERS[currentMonsterIdx]));
+            monster.isSpared = false;
+            
+            document.getElementById('monster-name').innerText = monster.name;
+            document.getElementById('monster-hp-text').innerText = `${monster.hp}/${monster.maxHp}`;
+            document.getElementById('monster-hp-fill').style.width = '100%';
+            
+            updatePlayerHPUI();
+            setDialogue(`* ${monster.name} steps forward with overwhelming malice!`);
+        }
+
+        function setDialogue(text) {
+            turnState = 'DIALOGUE';
+            const dialogueBox = document.getElementById('dialogue-box');
+            if (dialogueBox) {
+                dialogueBox.innerHTML = '<span id="typewriter-text"></span>';
+                dialogueBox.classList.remove('hidden');
+            }
+            const dodgeCanvas = document.getElementById('dodgeCanvas');
+            if (dodgeCanvas) dodgeCanvas.classList.add('hidden');
+            const submenuContainer = document.getElementById('submenu-container');
+            if (submenuContainer) submenuContainer.classList.add('hidden');
+            const actionButtons = document.getElementById('action-buttons');
+            if (actionButtons) actionButtons.classList.remove('hidden');
+            
+            const textEl = document.getElementById('typewriter-text');
+            if (!textEl) return;
+            textEl.innerText = "";
+            
+            if (typewriterInterval) clearInterval(typewriterInterval);
+            
+            let i = 0;
+            typewriterInterval = setInterval(() => {
+                if (i < text.length) {
+                    textEl.innerText += text.charAt(i);
+                    playSound('text');
+                    i++;
+                } else {
+                    clearInterval(typewriterInterval);
+                    if (turnState === 'DIALOGUE') {
+                        setTimeout(() => {
+                            if (Math.random() < 0.7 && monster.dialogue.length > 0) {
+                                showMonsterSpeech();
+                            }
+                        }, 400);
+                    }
+                }
+            }, 20);
+        }
+
+        function showMonsterSpeech() {
+            const speech = document.getElementById('monster-speech');
+            const randomMsg = monster.dialogue[Math.floor(Math.random() * monster.dialogue.length)];
+            speech.innerText = randomMsg;
+            speech.classList.remove('hidden');
+            setTimeout(() => {
+                speech.classList.add('hidden');
+            }, 1800);
+        }
+
+        function selectAction(action) {
+            if (turnState !== 'DIALOGUE') return;
+            initAudio();
+            playSound('select');
+
+            const submenu = document.getElementById('submenu-container');
+            const actions = document.getElementById('action-buttons');
+            submenu.innerHTML = '';
+
+            if (action === 'fight') {
+                turnState = 'ATTACKING';
+                actions.classList.add('hidden');
+                setDialogue("* Strike accurately when the cursor reaches the center!");
+                startAttackMiniGame();
+            } else if (action === 'act') {
+                turnState = 'SUBMENU';
+                actions.classList.add('hidden');
+                submenu.classList.remove('hidden');
+                
+                monster.acts.forEach((actObj) => {
+                    const btn = document.createElement('button');
+                    btn.className = "py-2 bg-black border-2 border-yellow-400 text-yellow-300 text-xs font-bold hover:bg-yellow-400 hover:text-black";
+                    btn.innerText = actObj.name;
+                    btn.onclick = () => performAct(actObj);
+                    submenu.appendChild(btn);
+                });
+            } else if (action === 'item') {
+                turnState = 'SUBMENU';
+                actions.classList.add('hidden');
+                submenu.classList.remove('hidden');
+
+                if (inventory.length === 0) {
+                    setDialogue("* No items left in your inventory!");
+                    setTimeout(() => resetTurnToDialogue(), 1500);
+                    return;
+                }
+
+                inventory.forEach((item, idx) => {
+                    const btn = document.createElement('button');
+                    btn.className = "py-2 bg-black border-2 border-green-400 text-green-300 text-xs font-bold hover:bg-green-400 hover:text-black";
+                    btn.innerText = item;
+                    btn.onclick = () => useItem(idx);
+                    submenu.appendChild(btn);
+                });
+            } else if (action === 'mercy') {
+                setDialogue(`* Sans refuses to be spared. Get ready!`);
+                setTimeout(() => startDodgePhase(), 1500);
+            }
+        }
+
+        function performAct(actObj) {
+            playSound('select');
+            setDialogue(`* ${actObj.desc}\n* Sans's attacks become even more furious!`);
+            setTimeout(() => startDodgePhase(), 2000);
+        }
+
+        function useItem(idx) {
+            playSound('heal');
+            const item = inventory.splice(idx, 1)[0];
+            playerHp = Math.min(playerMaxHp, playerHp + 250);
+            updatePlayerHPUI();
+            setDialogue(`* You used ${item}. Restored 250 HP!`);
+            setTimeout(() => startDodgePhase(), 2000);
+        }
+
+        let attackInterval = null;
+        function startAttackMiniGame() {
+            const dialogueBox = document.getElementById('dialogue-box');
+            dialogueBox.innerHTML = `
+                <div class="w-full bg-gray-800 h-8 border-2 border-white relative overflow-hidden flex items-center">
+                    <div id="attack-cursor" class="absolute w-1 h-full bg-red-500 left-0"></div>
+                </div>
+            `;
+
+            let pos = 0;
+            let dir = 8;
+            attackInterval = setInterval(() => {
+                pos += dir;
+                if (pos > 100 || pos < 0) dir *= -1;
+                const cursor = document.getElementById('attack-cursor');
+                if (cursor) cursor.style.left = pos + '%';
+            }, 8);
+
+            window.addEventListener('keydown', handleAttackStrikeOnce);
+            document.getElementById('battle-box').onclick = handleAttackStrikeOnce;
+        }
+
+        function handleAttackStrikeOnce(e) {
+            if (e.code && e.code !== 'Space') return;
+            window.removeEventListener('keydown', handleAttackStrikeOnce);
+            document.getElementById('battle-box').onclick = null;
+            clearInterval(attackInterval);
+
+            const cursor = document.getElementById('attack-cursor');
+            let accuracy = 50;
+            if (cursor) {
+                let leftVal = parseFloat(cursor.style.left);
+                accuracy = Math.max(0, 100 - Math.abs(50 - leftVal) * 2);
+            }
+
+            const damage = Math.floor((accuracy / 100) * 150) + 50;
+            monster.hp = Math.max(0, monster.hp - damage);
+            
+            const hpPercent = (monster.hp / monster.maxHp) * 100;
+            document.getElementById('monster-hp-fill').style.width = hpPercent + '%';
+            document.getElementById('monster-hp-text').innerText = `${monster.hp}/${monster.maxHp}`;
+
+            playSound('hit');
+            setDialogue(`* You struck Sans for ${damage} damage! (${monster.hp} HP remaining)`);
+
+            if (monster.hp <= 0) {
+                setTimeout(() => triggerVictory(), 2000);
+            } else {
+                setTimeout(() => startDodgePhase(), 2000);
+            }
+        }
+
+        function startDodgePhase() {
+            turnState = 'DODGE';
+            const dialogueBox = document.getElementById('dialogue-box');
+            if (dialogueBox) dialogueBox.classList.add('hidden');
+            const submenuContainer = document.getElementById('submenu-container');
+            if (submenuContainer) submenuContainer.classList.add('hidden');
+            const actionButtons = document.getElementById('action-buttons');
+            if (actionButtons) actionButtons.classList.add('hidden');
+            
+            const canvasEl = document.getElementById('dodgeCanvas');
+            if (!canvasEl) return;
+            canvasEl.classList.remove('hidden');
+            if (!ctx) {
+                ctx = canvasEl.getContext('2d');
+            }
+            
+            canvasEl.width = canvasEl.parentElement.clientWidth;
+            canvasEl.height = canvasEl.parentElement.clientHeight;
+
+            soul.x = canvasEl.width / 2;
+            soul.y = canvasEl.height / 2;
+            soul.speed = 5.5;
+            
+            bullets = [];
+            specialHazards = [];
+            dodgeTimer = 0;
+            invincibleTimer = 0;
+            
+            currentAttackPattern = (currentAttackPattern + 1) % 4;
+
+            if (currentAttackPattern === 0) {
+                for (let i = 0; i < 15; i++) {
+                    bullets.push({
+                        x: canvasEl.width + i * 45,
+                        y: Math.random() * (canvasEl.height - 30),
+                        vx: -(4 + Math.random() * 3),
+                        vy: (Math.random() - 0.5) * 4,
+                        size: 9,
+                        type: 'bone'
+                    });
+                }
+            } else if (currentAttackPattern === 1) {
+                for (let i = 0; i < 22; i++) {
+                    let angle = (i / 22) * Math.PI * 2;
+                    bullets.push({
+                        x: canvasEl.width / 2,
+                        y: canvasEl.height / 2,
+                        angle: angle,
+                        speed: 2.5 + Math.random() * 1.5,
+                        size: 8,
+                        type: 'spiral'
+                    });
+                }
+            } else if (currentAttackPattern === 2) {
+                playSound('laser');
+                specialHazards.push({
+                    x: 0,
+                    y: canvasEl.height / 2 - 18,
+                    w: canvasEl.width,
+                    h: 36,
+                    timer: 50,
+                    active: false
+                });
+                for (let i = 0; i < 10; i++) {
+                    bullets.push({
+                        x: canvasEl.width + Math.random() * 80,
+                        y: Math.random() * canvasEl.height,
+                        vx: -5,
+                        vy: 0,
+                        size: 9,
+                        type: 'fast'
+                    });
+                }
+            } else {
+                for (let i = 0; i < 18; i++) {
+                    bullets.push({
+                        x: i % 2 === 0 ? 0 : canvasEl.width,
+                        y: (i / 18) * canvasEl.height,
+                        vx: i % 2 === 0 ? 4.5 : -4.5,
+                        vy: (Math.random() - 0.5) * 3,
+                        size: 9,
+                        type: 'wall'
+                    });
+                }
+            }
+
+            requestAnimationFrame(dodgeLoop);
+        }
+
+        function dodgeLoop() {
+            if (turnState !== 'DODGE') return;
+            if (!ctx) return;
+            
+            dodgeTimer++;
+            if (invincibleTimer > 0) invincibleTimer--;
+
+            const canvasEl = document.getElementById('dodgeCanvas');
+            if (!canvasEl) return;
+            ctx.clearRect(0, 0, canvasEl.width, canvasEl.height);
+
+            if (keys.ArrowUp || keys.KeyW) soul.y -= soul.speed;
+            if (keys.ArrowDown || keys.KeyS) soul.y += soul.speed;
+            if (keys.ArrowLeft || keys.KeyA) soul.x -= soul.speed;
+            if (keys.ArrowRight || keys.KeyD) soul.x += soul.speed;
+
+            soul.x = Math.max(soul.size, Math.min(canvasEl.width - soul.size, soul.x));
+            soul.y = Math.max(soul.size, Math.min(canvasEl.height - soul.size, soul.y));
+
+            // Render Soul with flashing iframes effect
+            if (invincibleTimer === 0 || Math.floor(invincibleTimer / 4) % 2 === 0) {
+                ctx.fillStyle = '#ef4444';
+                ctx.beginPath();
+                ctx.arc(soul.x, soul.y, soul.size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            for (let h of specialHazards) {
+                h.timer--;
+                if (h.timer > 15) {
+                    ctx.fillStyle = 'rgba(239, 68, 68, 0.25)';
+                    ctx.fillRect(h.x, h.y, h.w, h.h);
+                } else {
+                    h.active = true;
+                    ctx.fillStyle = '#ef4444';
+                    ctx.fillRect(h.x, h.y, h.w, h.h);
+                    
+                    if (invincibleTimer === 0 && soul.y > h.y && soul.y < h.y + h.h) {
+                        playerHp = Math.max(0, playerHp - 75);
+                        updatePlayerHPUI();
+                        playSound('hit');
+                        invincibleTimer = 45; // 45 frames of invincibility
+                        if (playerHp <= 0) {
+                            triggerGameOver();
+                            return;
+                        }
+                    }
+                }
+            }
+
+            for (let i = bullets.length - 1; i >= 0; i--) {
+                let b = bullets[i];
+
+                if (b.type === 'spiral') {
+                    b.angle += 0.04;
+                    b.x += Math.cos(b.angle) * b.speed;
+                    b.y += Math.sin(b.angle) * b.speed;
+                } else {
+                    b.x += b.vx;
+                    b.y += b.vy;
+                    if (b.y < 0 || b.y > canvasEl.height) b.vy *= -1;
+                }
+
+                ctx.fillStyle = b.type === 'bone' ? '#ffffff' : '#facc15';
+                ctx.fillRect(b.x, b.y, b.size * 1.5, b.size);
+
+                let dist = Math.hypot(soul.x - b.x, soul.y - b.y);
+                if (invincibleTimer === 0 && dist < soul.size + b.size / 2) {
+                    playerHp = Math.max(0, playerHp - 60);
+                    updatePlayerHPUI();
+                    playSound('hit');
+                    invincibleTimer = 45; // iframes
+                    bullets.splice(i, 1);
+                    
+                    if (playerHp <= 0) {
+                        triggerGameOver();
+                        return;
+                    }
+                }
+
+                if (b.x < -40 || b.x > canvasEl.width + 100) {
+                    b.x = canvasEl.width + Math.random() * 50;
+                    b.y = Math.random() * canvasEl.height;
+                }
+            }
+
+            if (dodgeTimer < 450) {
+                requestAnimationFrame(dodgeLoop);
+            } else {
+                canvasEl.classList.add('hidden');
+                resetTurnToDialogue();
+            }
+        }
+
+        function resetTurnToDialogue() {
+            setDialogue(`* Sans adjusts his jacket, smirking. Your turn.`);
+        }
+
+        function updatePlayerHPUI() {
+            document.getElementById('player-hp-text').innerText = `${playerHp}/${playerMaxHp}`;
+            const pct = (playerHp / playerMaxHp) * 100;
+            document.getElementById('player-hp-fill').style.width = pct + '%';
+        }
+
+        function triggerVictory() {
+            turnState = 'VICTORY';
+            document.getElementById('screen-battle').classList.add('hidden');
+            document.getElementById('screen-victory').classList.remove('hidden');
+        }
+
+        function triggerGameOver() {
+            turnState = 'GAMEOVER';
+            document.getElementById('screen-battle').classList.add('hidden');
+            document.getElementById('screen-gameover').classList.remove('hidden');
+        }
+
+        function restartGame() {
+            document.getElementById('screen-gameover').classList.add('hidden');
+            document.getElementById('screen-battle').classList.remove('hidden');
+            playerHp = playerMaxHp;
+            loadMonster();
+        }
+
+        function returnToMenu() {
+            document.getElementById('screen-gameover').classList.add('hidden');
+            document.getElementById('screen-victory').classList.add('hidden');
+            document.getElementById('screen-battle').classList.add('hidden');
+            document.getElementById('screen-menu').classList.remove('hidden');
+        }
+
+        window.addEventListener('keydown', (e) => {
+            if (keys.hasOwnProperty(e.code)) keys[e.code] = true;
+        });
+
+        window.addEventListener('keyup', (e) => {
+            if (keys.hasOwnProperty(e.code)) keys[e.code] = false;
+        });
+    </script>
+</body>
+</html>
